@@ -1,0 +1,172 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:context="http://www.springframework.org/schema/context" xmlns:p="http://www.springframework.org/schema/p"
+	   xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cache="http://www.springframework.org/schema/cache"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+	http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+	http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd">
+
+	<!-- 1引入jdbc配置文件 -->
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:jdbc.properties</value>
+				<!--要是有多个配置文件，只需在这里继续添加即可 -->
+
+			</list>
+		</property>
+	</bean>
+
+	<!-- 2配置数据源 -->
+	<!--<bean id="dataSource"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		&lt;!&ndash; 不使用properties来配置 &ndash;&gt;
+		&lt;!&ndash; <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+			<property name="url" value="jdbc:mysql://localhost:3306/Users" /> <property 
+			name="username" value="root" /> <property name="password" value="root" /> &ndash;&gt;
+		&lt;!&ndash; 使用properties来配置 &ndash;&gt;
+		<property name="driverClassName">
+			<value>${jdbc_driverClassName}</value>
+		</property>
+		<property name="url">
+			<value>${jdbc_url}</value>
+		</property>
+		<property name="username">
+			<value>${jdbc_username}</value>
+		</property>
+		<property name="password">
+			<value>${jdbc_password}</value>
+		</property>
+	</bean>-->
+
+	<bean id="dataSource"
+		  class="com.jolbox.bonecp.BoneCPDataSource">
+		<!-- 不使用properties来配置 -->
+		<!-- <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+			<property name="url" value="jdbc:mysql://localhost:3306/Users" /> <property
+			name="username" value="root" /> <property name="password" value="root" /> -->
+		<!-- 使用properties来配置 -->
+		<property name="driverClass">
+			<value>${jdbc_driverClassName}</value>
+		</property>
+		<property name="jdbcUrl">
+			<value>${jdbc_url}</value>
+		</property>
+		<property name="username">
+			<value>${jdbc_username}</value>
+		</property>
+		<property name="password">
+			<value>${jdbc_password}</value>
+		</property>
+
+		<!-- 检查数据库连接池中空闲连接的间隔时间，单位是分，默认值：240，如果要取消则设置为0 -->
+		<property name="idleConnectionTestPeriod" value="60" />
+		<!-- 连接池中未使用的链接最大存活时间，单位是分，默认值：60，如果要永远存活设置为0 -->
+		<property name="idleMaxAge" value="30" />
+		<!-- 每个分区最大的连接数 -->
+		<!--
+			判断依据：请求并发数
+		 -->
+		<property name="maxConnectionsPerPartition" value="100" />
+		<!-- 每个分区最小的连接数 -->
+		<property name="minConnectionsPerPartition" value="5" />
+	</bean>
+
+
+
+
+
+
+	<!--3、配置SqlSessionFactory对象-->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!--注入数据库连接池-->
+		<property name="dataSource" ref="dataSource" />
+		<!--配置mybatis全局配置文件:mybatis-config.xml-->
+		<property name="configLocation" value="classpath:mybatis-config.xml" />
+		<!--扫描sql配置文件:mapper需要的xml文件-->
+		<property name="mapperLocations" value="classpath:mapper/*.xml"/>
+
+		<!-- 别名包 -->
+		<!--<property name="typeAliasesPackage" value="com.szkingdom.ssm.entity"/>-->
+
+	</bean>
+
+
+
+	<!--4、配置扫描Dao接口包,动态实现DAO接口,注入到spring容器-->
+
+	<!-- 配置 转换器，对于在basePackage设置的包（包括子包）下的接口类 的全类名，如果在Mapper.xml文件中定义过命名空间，
+ 将被转换成spring的BEAN，在调用 的地方通过@Autowired方式将可以注入接口实例-->
+
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<!--注入SqlSessionFactory-->
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+		<!-- 给出需要扫描的Dao接口-->
+		<property name="basePackage" value="com.szkingdom.ssm.dao"/>
+	</bean>
+
+
+	<!-- 自动扫描注解的bean -->
+	<context:component-scan base-package="com.szkingdom.ssm" />
+
+	<!-- 配置事务管理器,管理数据源事务处理-->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!--配置基于注解的声明式事务,默认使用注解来管理事务行为-->
+	<!--<tx:annotation-driven transaction-manager="transactionManager"/>-->
+
+	<!-- 定义事务策略 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<!--所有以query开头的方法都是只读的 -->
+			<tx:method name="query*" read-only="true" propagation="NOT_SUPPORTED"/>
+			<tx:method name="find*" read-only="true" propagation="NOT_SUPPORTED"/>
+			<tx:method name="list*" read-only="true" propagation="NOT_SUPPORTED"/>
+			<tx:method name="select*" read-only="true" propagation="NOT_SUPPORTED"/>
+
+			<tx:method name="insert*" propagation="REQUIRED" read-only="false" />
+			<tx:method name="create*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="add*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="update*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="edit*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="delete*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="del*" propagation="REQUIRED" read-only="false"/>
+			<!--其他方法使用默认事务策略 -->
+			<tx:method name="*"/>
+		</tx:attributes>
+	</tx:advice>
+
+	<aop:config>
+		<!--pointcut元素定义一个切入点，execution中的第一个星号 用以匹配方法的返回类型，
+			这里星号表明匹配所有返回类型。 com.abc.dao.*.*(..)表明匹配cn.itcast.mybatis.service包下的所有类的所有
+			方法 -->
+		<aop:pointcut id="myPointcut" expression="execution(* com.szkingdom.ssm.service.*.*(..))" />
+		<!--将定义好的事务处理策略应用到上述的切入点 -->
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="myPointcut" />
+	</aop:config>
+
+	<!-- 引入dubbo-Consumer -->
+	<!--Consumer.xml用来配置dubbo的Consumer来接收provider的服务-->
+	<!--<import resource="Consumer.xml" />-->
+
+
+
+	<!-- ②：启动Spring MVC的注解功能，完成请求和注解POJO的映射 -->
+	<bean
+			class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping" />
+	<bean
+			class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+		<property name="messageConverters">
+			<list>
+				<bean
+						class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter" />
+			</list>
+		</property>
+	</bean>
+
+
+</beans>

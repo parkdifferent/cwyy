@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.szkingdom.ssm.dao.PetMapper">
+    <cache />
+
+    <!-- 开启基于redis的二级缓存 -->
+    <!--<cache type="com.example.demo.cache.RedisCache"/>-->
+
+    <!--<select id="findOne" resultType="Question">
+        SELECT * FROM t_question WHERE t_question.id = #{id}
+    </select>-->
+
+    <insert id="savePetBeauty" useGeneratedKeys="true" keyProperty="id" parameterType="java.util.Map">
+        INSERT INTO pet_beauty_rel
+        (beauty_id, host_id, pet_id)
+        VALUES
+        (#{beautyId}, #{hostId}, #{petId})    /*jdbcType并非必须的，只有当插入该列的数据可能为空时，才必须设置*/
+    </insert>
+
+    <select id="queryPetBeautyInfo" resultMap="petBeautyInfo" useCache="true">
+        SELECT
+        pet_beauty_rel.id,
+        t_beauty.id AS bid,
+        t_beauty.name,
+        t_beauty.price,
+        t_user.id AS uid,
+        t_user.user_name AS userName,
+        t_user.phone,
+        t_pet.id AS pid,
+        t_pet.nick_name AS nickName,
+        t_pet.veriety FROM pet_beauty_rel
+        LEFT JOIN t_beauty on t_beauty.id = pet_beauty_rel.beauty_id
+        LEFT JOIN t_user on t_user.id = pet_beauty_rel.host_id
+        LEFT JOIN t_pet ON t_pet.id = pet_beauty_rel.pet_id ORDER BY pet_beauty_rel.id DESC limit #{pageNo},#{pageSize}
+    </select>
+
+    <resultMap id="petBeautyInfo" type="com.szkingdom.ssm.bean.PetBeautyDTO" autoMapping="true">
+        <id property="id" column="id" />
+        <collection property="beauty" ofType="Beauty" autoMapping="true">
+            <id property="id" column="bid"/>
+        </collection>
+
+        <collection property="user" ofType="User" autoMapping="true">
+            <id property="id" column="uid"/>
+        </collection>
+
+        <collection property="pet" ofType="Pet" autoMapping="true">
+            <id property="id" column="pid"/>
+        </collection>
+        <!--<collection property="tags"-->
+
+    </resultMap>
+
+
+    <delete id="deletePetBeauty">
+        DELETE FROM pet_beauty_rel WHERE id = #{id}
+    </delete>
+
+
+
+    <insert id="savePetCare" useGeneratedKeys="true" keyProperty="id" parameterType = "java.util.Map" >
+        INSERT INTO t_care
+        (host_id, pet_id, begin_time, end_time)
+        VALUES
+        (#{hostId}, #{petId},#{beginTime},#{endTime})    /*jdbcType并非必须的，只有当插入该列的数据可能为空时，才必须设置*/
+    </insert>
+
+
+    <select id="queryPetCareInfo" resultType="com.szkingdom.ssm.bean.PetCare">
+        SELECT
+        t_care.id,
+        t_user.user_name AS userName,
+        t_user.phone,
+        t_pet.nick_name AS nickName,
+        t_pet.veriety FROM t_care
+        LEFT JOIN t_user on t_user.id = t_care.host_id
+        LEFT JOIN t_pet ON t_pet.id = t_care.pet_id ORDER BY t_care.id DESC limit #{pageNo},#{pageSize}
+    </select>
+
+
+    <delete id="deletePetCare">
+        DELETE FROM t_care WHERE id = #{id}
+    </delete>
+
+
+
+</mapper>
